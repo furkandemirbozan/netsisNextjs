@@ -62,7 +62,7 @@ export default function Navbar({ onTokenRefresh, isDarkMode, onThemeToggle }: Na
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <h1 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-              Netsis Rest API
+              AYDIN DESTECH NETSIS REST API
             </h1>
           </div>
           

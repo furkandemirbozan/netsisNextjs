@@ -97,6 +97,13 @@ interface ItemTransactionsResponse {
   Data: ItemTransaction[];
 }
 
+interface TransactionFilters {
+  page: number;
+  pageSize: number;
+  sort: string;
+  offset?: number;  // Added offset property
+}
+
 export default function DashboardPage() {
   const [cariList, setCariList] = useState<CariData[]>([]);
   const [loading, setLoading] = useState(false);
@@ -143,10 +150,11 @@ export default function DashboardPage() {
   const [showTransactions, setShowTransactions] = useState(false);
   const [isTransactionsVisible, setIsTransactionsVisible] = useState(false);
   const [isTransactionsLoading, setIsTransactionsLoading] = useState(false);
-  const [transactionFilters, setTransactionFilters] = useState({
+  const [transactionFilters, setTransactionFilters] = useState<TransactionFilters>({
     page: 1,
     pageSize: 10,
-    sort: '',
+    sort: 'desc',
+    offset: 1
   });
 
   // Add new state for response data
@@ -683,7 +691,7 @@ export default function DashboardPage() {
 
   // Add function to handle transaction card clicks
   const handleTransactionCardClick = (params: any = {}) => {
-    if (showTransactions && !params.force) {
+    if (!params.force && showTransactions && !params.first && !params.last) {
       setIsTransactionsVisible(false);
       setTimeout(() => {
         setShowTransactions(false);
@@ -808,7 +816,7 @@ export default function DashboardPage() {
             <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Stok İşlemleri</h1>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Stok Hareketleri Card */}
             <div 
               onClick={() => handleTransactionCardClick()}
@@ -828,60 +836,6 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
-
-            {/* Sayfalı Görüntüleme Card */}
-            <div 
-              onClick={() => handleTransactionCardClick({ limit: 10, offset: 20 })}
-              className={`${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white'} rounded-lg shadow-md p-6 cursor-pointer transform transition-all duration-200 hover:scale-105`}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Sayfalı Görüntüleme</h2>
-                  <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-500'} mt-1`}>20. kayıttan itibaren 10 kayıt</p>
-                </div>
-                <div className="text-green-600">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            {/* İlk Sayfa Card */}
-            <div 
-              onClick={() => handleTransactionCardClick({ first: true })}
-              className={`${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white'} rounded-lg shadow-md p-6 cursor-pointer transform transition-all duration-200 hover:scale-105`}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>İlk Sayfa</h2>
-                  <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-500'} mt-1`}>İlk sayfayı görüntüle</p>
-                </div>
-                <div className="text-indigo-600">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            {/* Son Sayfa Card */}
-            <div 
-              onClick={() => handleTransactionCardClick({ last: true })}
-              className={`${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white'} rounded-lg shadow-md p-6 cursor-pointer transform transition-all duration-200 hover:scale-105`}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Son Sayfa</h2>
-                  <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-500'} mt-1`}>Son sayfayı görüntüle</p>
-                </div>
-                <div className="text-purple-600">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -889,6 +843,281 @@ export default function DashboardPage() {
           <div className={`${isDarkMode ? 'bg-red-900 border-red-800 text-red-200' : 'bg-red-100 border-red-400 text-red-700'} px-4 py-3 rounded relative mb-8 border`} role="alert">
             <strong className="font-bold">Hata! </strong>
             <span className="block sm:inline">{error}</span>
+          </div>
+        )}
+
+        {/* ItemTransactions Results Section */}
+        {showTransactions && (
+          <div className={`transform transition-all duration-500 ease-in-out mb-8 ${
+            isTransactionsVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
+          }`}>
+            <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-lg rounded-lg overflow-hidden`}>
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    Stok Hareketleri
+                  </h3>
+                  <span className={`px-4 py-2 rounded-full text-sm ${isDarkMode ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800'}`}>
+                    {itemTransactions.length} Kayıt
+                  </span>
+                </div>
+
+                {/* Sayfalı Görüntüleme Controls */}
+                <div className="mb-6">
+                  <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                    <div className="flex flex-wrap items-center gap-4">
+                      <div className="flex-grow max-w-xs">
+                        <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                          Başlangıç Kaydı
+                        </label>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="number"
+                            min="1"
+                            value={transactionFilters.offset || ''}
+                            onChange={(e) => setTransactionFilters({
+                              ...transactionFilters,
+                              offset: parseInt(e.target.value) || 1
+                            })}
+                            className={`w-full px-3 py-2 rounded-md ${
+                              isDarkMode 
+                                ? 'bg-gray-600 border-gray-500 text-white' 
+                                : 'border-gray-300 text-gray-900'
+                            } focus:ring-2 focus:ring-blue-500`}
+                          />
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleTransactionCardClick({ 
+                                limit: 10, 
+                                offset: transactionFilters.offset || 1,
+                                force: true
+                              });
+                            }}
+                            className={`px-4 py-2 rounded-md text-white ${
+                              isDarkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'
+                            } transition-colors duration-200`}
+                          >
+                            Görüntüle
+                          </button>
+                        </div>
+                        <p className={`text-xs mt-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          Girilen kayıttan itibaren 10 kayıt gösterilir
+                        </p>
+                      </div>
+
+                      <div className="flex items-center space-x-4">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleTransactionCardClick({ first: true, force: true });
+                          }}
+                          className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
+                            isDarkMode 
+                              ? 'bg-indigo-600 hover:bg-indigo-700 text-white' 
+                              : 'bg-indigo-100 hover:bg-indigo-200 text-indigo-700'
+                          }`}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                          </svg>
+                          İlk Sayfa
+                        </button>
+                        
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleTransactionCardClick({ last: true, force: true });
+                          }}
+                          className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
+                            isDarkMode 
+                              ? 'bg-purple-600 hover:bg-purple-700 text-white' 
+                              : 'bg-purple-100 hover:bg-purple-200 text-purple-700'
+                          }`}
+                        >
+                          Son Sayfa
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {isTransactionsLoading ? (
+                  <div className="flex justify-center items-center py-8">
+                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
+                  </div>
+                ) : itemTransactions && itemTransactions.length > 0 ? (
+                  <>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}>
+                          <tr>
+                            <th scope="col" className={`px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                              Stok Kodu
+                            </th>
+                            <th scope="col" className={`px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                              Fiş No
+                            </th>
+                            <th scope="col" className={`px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                              Tarih
+                            </th>
+                            <th scope="col" className={`px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                              Miktar 1
+                            </th>
+                            <th scope="col" className={`px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                              Miktar 2
+                            </th>
+                            <th scope="col" className={`px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                              Depo Kodu
+                            </th>
+                            <th scope="col" className={`px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                              Açıklama
+                            </th>
+                            <th scope="col" className={`px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                              Cari Kod
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className={`divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
+                          {itemTransactions.map((transaction, index) => (
+                            <tr 
+                              key={index} 
+                              className={`${
+                                isDarkMode 
+                                  ? 'hover:bg-gray-700 bg-gray-800' 
+                                  : 'hover:bg-gray-50 bg-white'
+                              } transition-colors duration-150 ease-in-out`}
+                            >
+                              <td className="px-6 py-4">
+                                <div className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                  {transaction?.Stok_Kodu || '-'}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                                  {transaction?.Fisno || '-'}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                                  {transaction?.Sthar_Tarih 
+                                    ? new Date(transaction.Sthar_Tarih).toLocaleDateString('tr-TR', {
+                                        day: '2-digit',
+                                        month: '2-digit',
+                                        year: 'numeric'
+                                      })
+                                    : '-'
+                                  }
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <div className={`text-sm font-medium ${
+                                  typeof transaction?.Sthar_Gcmik === 'number'
+                                    ? transaction.Sthar_Gcmik > 0
+                                      ? 'text-green-500'
+                                      : transaction.Sthar_Gcmik < 0
+                                        ? 'text-red-500'
+                                        : isDarkMode ? 'text-gray-300' : 'text-gray-900'
+                                    : isDarkMode ? 'text-gray-300' : 'text-gray-900'
+                                }`}>
+                                  {typeof transaction?.Sthar_Gcmik === 'number'
+                                    ? transaction.Sthar_Gcmik.toLocaleString('tr-TR', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                      })
+                                    : '-'
+                                  }
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <div className={`text-sm font-medium ${
+                                  typeof transaction?.Sthar_Gcmik2 === 'number'
+                                    ? transaction.Sthar_Gcmik2 > 0
+                                      ? 'text-green-500'
+                                      : transaction.Sthar_Gcmik2 < 0
+                                        ? 'text-red-500'
+                                        : isDarkMode ? 'text-gray-300' : 'text-gray-900'
+                                    : isDarkMode ? 'text-gray-300' : 'text-gray-900'
+                                }`}>
+                                  {typeof transaction?.Sthar_Gcmik2 === 'number'
+                                    ? transaction.Sthar_Gcmik2.toLocaleString('tr-TR', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                      })
+                                    : '-'
+                                  }
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                  isDarkMode 
+                                    ? 'bg-gray-700 text-gray-300' 
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {transaction?.DEPO_KODU || '-'}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                                  {transaction?.Sthar_Aciklama || '-'}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                                  {transaction?.Sthar_Carikod || '-'}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    
+                    {/* Pagination Buttons */}
+                    <div className="mt-6 flex justify-center space-x-4">
+                      <button
+                        onClick={() => handleTransactionCardClick({ first: true })}
+                        className={`flex items-center px-6 py-3 rounded-md text-sm font-medium transition-colors duration-200 ${
+                          isDarkMode 
+                            ? 'bg-indigo-600 hover:bg-indigo-700 text-white' 
+                            : 'bg-indigo-100 hover:bg-indigo-200 text-indigo-700'
+                        }`}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                        </svg>
+                        İlk Sayfa
+                      </button>
+                      
+                      <button
+                        onClick={() => handleTransactionCardClick({ last: true })}
+                        className={`flex items-center px-6 py-3 rounded-md text-sm font-medium transition-colors duration-200 ${
+                          isDarkMode 
+                            ? 'bg-purple-600 hover:bg-purple-700 text-white' 
+                            : 'bg-purple-100 hover:bg-purple-200 text-purple-700'
+                        }`}
+                      >
+                        Son Sayfa
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className={`text-center py-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                    </svg>
+                    <h3 className="mt-2 text-sm font-medium">Kayıt Bulunamadı</h3>
+                    <p className="mt-1 text-sm">Gösterilecek stok hareketi bulunmuyor.</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -1569,165 +1798,6 @@ export default function DashboardPage() {
                   </div>
                 </div>
               )}
-            </div>
-          </div>
-        )}
-
-        {/* ItemTransactions Results Section */}
-        {showTransactions && (
-          <div className={`transform transition-all duration-500 ease-in-out mb-8 ${
-            isTransactionsVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
-          }`}>
-            <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-lg rounded-lg overflow-hidden`}>
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                    Stok Hareketleri
-                  </h3>
-                  <span className={`px-4 py-2 rounded-full text-sm ${isDarkMode ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800'}`}>
-                    {itemTransactions.length} Kayıt
-                  </span>
-                </div>
-
-                {isTransactionsLoading ? (
-                  <div className="flex justify-center items-center py-8">
-                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
-                  </div>
-                ) : itemTransactions && itemTransactions.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                      <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}>
-                        <tr>
-                          <th scope="col" className={`px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                            Stok Kodu
-                          </th>
-                          <th scope="col" className={`px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                            Fiş No
-                          </th>
-                          <th scope="col" className={`px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                            Tarih
-                          </th>
-                          <th scope="col" className={`px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                            Miktar 1
-                          </th>
-                          <th scope="col" className={`px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                            Miktar 2
-                          </th>
-                          <th scope="col" className={`px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                            Depo Kodu
-                          </th>
-                          <th scope="col" className={`px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                            Açıklama
-                          </th>
-                          <th scope="col" className={`px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                            Cari Kod
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className={`divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
-                        {itemTransactions.map((transaction, index) => (
-                          <tr 
-                            key={index} 
-                            className={`${
-                              isDarkMode 
-                                ? 'hover:bg-gray-700 bg-gray-800' 
-                                : 'hover:bg-gray-50 bg-white'
-                            } transition-colors duration-150 ease-in-out`}
-                          >
-                            <td className="px-6 py-4">
-                              <div className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                                {transaction?.Stok_Kodu || '-'}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
-                                {transaction?.Fisno || '-'}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
-                                {transaction?.Sthar_Tarih 
-                                  ? new Date(transaction.Sthar_Tarih).toLocaleDateString('tr-TR', {
-                                      day: '2-digit',
-                                      month: '2-digit',
-                                      year: 'numeric'
-                                    })
-                                  : '-'
-                                }
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <div className={`text-sm font-medium ${
-                                typeof transaction?.Sthar_Gcmik === 'number'
-                                  ? transaction.Sthar_Gcmik > 0
-                                    ? 'text-green-500'
-                                    : transaction.Sthar_Gcmik < 0
-                                      ? 'text-red-500'
-                                      : isDarkMode ? 'text-gray-300' : 'text-gray-900'
-                                  : isDarkMode ? 'text-gray-300' : 'text-gray-900'
-                              }`}>
-                                {typeof transaction?.Sthar_Gcmik === 'number'
-                                  ? transaction.Sthar_Gcmik.toLocaleString('tr-TR', {
-                                      minimumFractionDigits: 2,
-                                      maximumFractionDigits: 2
-                                    })
-                                  : '-'
-                                }
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <div className={`text-sm font-medium ${
-                                typeof transaction?.Sthar_Gcmik2 === 'number'
-                                  ? transaction.Sthar_Gcmik2 > 0
-                                    ? 'text-green-500'
-                                    : transaction.Sthar_Gcmik2 < 0
-                                      ? 'text-red-500'
-                                      : isDarkMode ? 'text-gray-300' : 'text-gray-900'
-                                  : isDarkMode ? 'text-gray-300' : 'text-gray-900'
-                              }`}>
-                                {typeof transaction?.Sthar_Gcmik2 === 'number'
-                                  ? transaction.Sthar_Gcmik2.toLocaleString('tr-TR', {
-                                      minimumFractionDigits: 2,
-                                      maximumFractionDigits: 2
-                                    })
-                                  : '-'
-                                }
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                isDarkMode 
-                                  ? 'bg-gray-700 text-gray-300' 
-                                  : 'bg-gray-100 text-gray-800'
-                              }`}>
-                                {transaction?.DEPO_KODU || '-'}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
-                                {transaction?.Sthar_Aciklama || '-'}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
-                                {transaction?.Sthar_Carikod || '-'}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className={`text-center py-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                    </svg>
-                    <h3 className="mt-2 text-sm font-medium">Kayıt Bulunamadı</h3>
-                    <p className="mt-1 text-sm">Gösterilecek stok hareketi bulunmuyor.</p>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         )}
